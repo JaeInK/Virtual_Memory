@@ -9,30 +9,40 @@ int main( int argc, const char* argv[] )
 	FILE *fp;
 	int EventNum, timeQuantum, vmSize, pmSize, pageSize, feedFreq, feedSize;
 	char charline[100];
+	bool terminate=false;
+	string line="";
 
 	if(fp = fopen("input","r"))
 	{
 		fscanf(fp, "%d\t%d\t%d\t%d\t%d\t%d\t%d\n", &EventNum, &timeQuantum, &vmSize, &pmSize, &pageSize, &feedFreq, &feedSize);
 		
+		
+		while(!terminate)
+		{
+			if(line.empty())
+			{
+				fgets(charline, 100, fp);
+				line = string(charline);
+				line = line.substr(0, line.size()-1);
+				fscanfo(line, 
+			}
+
+			//if line is used set it ""
+
+		}
+			
+			
 		while(fgets(charline, 100, fp))
 		{
-			cout<<charline[];
 			string line(charline);
-			cout<<line;
+			line = line.substr(0, line.size()-1);
+			cout<<line<<endl;
 		}
 
+
+		ㅌ
 		fclose(fp);
 	}
-	//ifstream openFile("input");
-	//if(openFile.is_open())
-	//{
-	//	string line;
-	//	while(getline(openFile, line))
-	//	{
-	//		cout<<line<<endl;
-	//	}
-	//	openFile.close();
-	//}
 
 	return 0;
 }
