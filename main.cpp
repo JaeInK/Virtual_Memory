@@ -28,7 +28,6 @@ int main( int argc, const char* argv[] )
 			
 		while(!terminate)
 		{
-			cout<<"a";
 			//line is empty means that inputs' instruction is processed so you need to read next instruction
 			if(line.empty())
 			{
@@ -62,25 +61,27 @@ int main( int argc, const char* argv[] )
 				line="";
 			}
 
+			//get a process from run_queue if there is no running process
+			if(runQueue.size()!=0 && !running)
+			{
+				Process pop =  runQueue[0];
+				runQueue.erase(runQueue.begin());					
+				runningProcess = &pop;
+				running = true;
+			}
+
 			//keep running if there is running process
 			if(running)
 			{
-				runningProcess.cpuCylcle--;
+				runningProcess->reduceCpuCycle();
 				timeLimit++;
 
 				//unable to keep running
-				if(runningProcess.cpuCycle==0 || timeLimit==timeQuantum)
+				if(runningProcess->getCpuCycle()==0 || timeLimit==timeQuantum)
 				{
 					running = false;
 					timeLimit = 0;
 				}
-			}
-
-			//get a process from run_queue if there is no running process
-			if(vector.size()!=0 && !running)
-			{
-				runningProcess = &poc
-				running = true;
 			}
 
 			cycle++;

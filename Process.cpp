@@ -12,10 +12,21 @@ Process::Process(int _cpuCycle, string _codeName)
 	codeName = _codeName;
 }
 
-void Process::getCommandNum()
+int Process::getCommandNum()
 {
 }
 
-void Process::getCodeName()
+int Process::getCodeName()
 {
 }
+
+int Process::getCpuCycle()
+{
+	return cpuCycle;
+}
+
+void Process::reduceCpuCycle()
+{
+	cpuCycle--;
+}
+
