@@ -6,11 +6,11 @@ Process::Process()
 {
 }
 
-Process::Process(int _cpuCycle, string _codeName)
+Process::Process(int _cpuCycle, string _codeName, int _pid)
 {
 	cpuCycle = _cpuCycle;
 	codeName = _codeName;
-	pid = -1;
+	pid = _pid;
 }
 
 int Process::getCommandNum()

@@ -15,7 +15,7 @@ class Process
 
 	public:
 		Process();
-		Process(int _cpuCycle, std::string _codeName);
+		Process(int _cpuCycle, std::string _codeName, int _pid);
 		int getCommandNum();
 		std::string getCodeName();
 		int getCpuCycle();
