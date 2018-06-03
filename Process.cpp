@@ -10,14 +10,21 @@ Process::Process(int _cpuCycle, string _codeName)
 {
 	cpuCycle = _cpuCycle;
 	codeName = _codeName;
+	pid = -1;
 }
 
 int Process::getCommandNum()
 {
 }
 
-int Process::getCodeName()
+string Process::getCodeName()
 {
+	return codeName;
+}
+
+int Process::getPid()
+{
+	return pid;
 }
 
 int Process::getCpuCycle()
@@ -30,3 +37,7 @@ void Process::reduceCpuCycle()
 	cpuCycle--;
 }
 
+void Process::setPid(int _pid)
+{
+	pid = _pid;
+}
