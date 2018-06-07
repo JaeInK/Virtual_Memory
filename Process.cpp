@@ -29,9 +29,6 @@ Process::Process(int _cpuCycle, string _codeName, int _vmPage)
 	getline(inFile, line);
 	stringstream SS(line);
 	SS>>commandNum;
-	cout<<"Making"<<codeName<<"COMMANDNUM"<<commandNum<<endl;
-	if(commandNum<100)
-	{
 	for(int i=0; i<commandNum; i++)
 	{
 		getline(inFile, line);
@@ -43,8 +40,6 @@ Process::Process(int _cpuCycle, string _codeName, int _vmPage)
 		ss>>k;
 		tmp.push_back(k);
 		commandArray.push_back(tmp);
-		cout<<"COMMANDARRAY"<<commandArray[i][0]<<commandArray[i][1]<<endl;
-	}
 	}
 }
 

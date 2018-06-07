@@ -124,6 +124,8 @@ int main( int argc, const char* argv[] )
 			else //Produce Process
 			{
 				Process proc(feedSize, line_array[1], vmPage);
+				proc.pid = processId;
+				processId++;
 				cout<<"PUSH CODENAME"<<line_array[1]<<endl;
 				runQueue.push_back(proc);
 			}
@@ -135,11 +137,6 @@ int main( int argc, const char* argv[] )
 		{
 			runningProcess =  runQueue.front();
 			runQueue.pop_front();
-			if(runningProcess.getPid()==-1)//first time to run
-			{
-				runningProcess.setPid(processId);
-				processId++;
-			}
 			int emptyProcess=0;
 			while(runningProcess.getCpuCycle()==0)//if the picked process doesn't have remaining cpu cycle
 			{
@@ -158,10 +155,10 @@ int main( int argc, const char* argv[] )
 			}
 			cout<<"POP PROCESS"<<runningProcess.getCodeName()<<endl;				
 			running = true;
-			fprintf(fw, "%d\t%d\t%s\n", cycle, runningProcess.getPid(), runningProcess.getCodeName().c_str());
+			fprintf(fw, "%d\t%d\t%s\n", cycle, runningProcess.pid, runningProcess.getCodeName().c_str());
 		}
 
-		//Print system.txt
+		/////////////////Print system.txt
 		fprintf(sy, "%d Cycle: ", cycle);
 		if(running)
 		{
@@ -183,6 +180,7 @@ int main( int argc, const char* argv[] )
 				{
 		      fprintf(sy, "%d(%s) ", runQueue[i].pid, runQueue[i].codeName.c_str());
 				}
+				fprintf(sy, "\n");
 		}
 		fprintf(sy, "SleepList: ");
 		if(SleepList.size()==0)
@@ -195,6 +193,7 @@ int main( int argc, const char* argv[] )
 			{
         fprintf(sy, "%d(%s) ", SleepList[i].pid, SleepList[i].codeName.c_str());
 			}
+			fprintf(sy, "\n");
 		}
 		fprintf(sy, "IOWait List: ");
 		if(IOWaitList.size()==0)
@@ -207,6 +206,7 @@ int main( int argc, const char* argv[] )
 			{
         fprintf(sy, "%d(%s) ", IOWaitList[i].pid, IOWaitList[i].codeName.c_str());
 			}
+			fprintf(sy, "\n");
 		}
 		fprintf(sy, "|");
 		for(int i=0; i<allocatedFrame.size(); i++) 
@@ -214,7 +214,7 @@ int main( int argc, const char* argv[] )
     	char sep = ' ';
 			for(int j=1; j<buddySlice.size(); j++)
 			{
-				if(i==buddySlice[j])
+				if(i==buddySlice[j]-1)
 				{
 					sep='|';
 				}
@@ -229,15 +229,14 @@ int main( int argc, const char* argv[] )
     	}
 		}
 		fprintf(sy, "\n");
-		// // Line 6
 		fprintf(sy, "LRU:");
 		for(int i=0; i<LRU.size(); i++)
 		{
 		  fprintf(sy, " (%d:%d)", LRU[i][0], LRU[i][1]);
 		}
 		fprintf(sy, "\n");
-		// 매 사이클이 끝나면 다음 사이클과 구분을 위해 개행문자 필요
 		fprintf(sy, "\n");
+		/////////////////Print system.txt Finished
 
 		//Run Process
 		if(running)
@@ -287,7 +286,7 @@ int main( int argc, const char* argv[] )
 		cycle++;//이게 여기 있는게 맞을까 안으로 넣어야 하지 않을까?
 		feedLimit++;
 
-		if(cycle==15)
+		if(cycle==30)//terminate 조건은 모든 러닝. 그리고 리스트 들이 비어있고. 또한 인스트럭션이 안남아 있을때!
 		{
 			terminate=true;
 		}
@@ -310,19 +309,32 @@ deque<int> getBuddyMemory(deque<int> BuddySlice)
 void memoryAllocation(int pageNum, Process RunningProcess)
 {
 	//계산할때는 페이지로 나눠서 계산하고 이제 write할때는 다시 곱해서 곗ㅑ
-	// deque<int> buddyMemory = getBuddyMemory(buddySlice);
-	// int smallestMemory=pmSize+1;//맨처음 슬라이스 아예 없을때에도 괜찮은지 확인 필요 맨처음 슬라이스 일때도 들어갈수
+	deque<int> buddyMemory = getBuddyMemory(buddySlice);
+	cout<<"BUDDY"<<endl;
+	for(int i=0; i<buddySlice.size();i++)
+	{
+		cout<<buddySlice[i];
+	}
+	cout<<endl;
+	for(int i=0; i<buddyMemory.size();i++)
+	{
+		cout<<buddyMemory[i];
+	}
+	cout<<"END"<<endl;
+	int smallestMemory=pmSize+1;//맨처음 슬라이스 아예 없을때에도 괜찮은지 확인 필요 맨처음 슬라이스 일때도 들어갈수
 	// //있는건지 확인해야 하는데...
-	// int smallestIndex=-1;
+	int smallestIndex=-1;
 	
 	// //smallestIndex=-1이라는 건 들어갈 자리가 없다는 거다. LRU 이용해야해.
 	// //줄일 필요 없이 그대로 넣으면?
-	// while(smallestMemory>=2*pageNum)//while 잘돌아가게 만들어야 하는데
-	// {//프린트로계속 중간중간 확인
-	// 	buddySlice.insert(buddySlice.begin()+smallestIndex+1, buddySlice[smallestIndex+1]-buddySlice[smallestIndex]);
-	// 	buddyMemory = getBuddyMemory(buddySlice);
-	// 	//smallestMemory = pmSize;
-	// 	//smallestIndex = 0;
+	while(smallestMemory>=2*pageNum)//while 잘돌아가게 만들어야 하는데
+	{//프린트로계속 중간중간 확	
+		cout<<"AAAAAAAAAAAAa"<<endl;
+		buddySlice.insert(buddySlice.begin()+smallestIndex+1, buddySlice[smallestIndex+1]-buddySlice[smallestIndex]);//여기 지금 마이너스.
+		cout<<"BBBBBBBBBBB"<<endl;
+		buddyMemory = getBuddyMemory(buddySlice);
+		smallestMemory = pmSize;
+		smallestIndex = 0;
 	// 	for(int i=0; i<buddyMemory.size(); i++)
 	// 	{
 	// 		if(buddyMemory[i]<smallestMemory && buddyMemory[i]>pageNum && allocatedFrame[buddySlice[i]][0]==-1)//그리고 다른 페이지가 들어가 있으면 안된다. 추가로
@@ -335,7 +347,7 @@ void memoryAllocation(int pageNum, Process RunningProcess)
 	// 	}
 	// 	//어느 인덱스에 넣어야 하지?
 	// 	//만약 4배보다 같거나 크면?
-	// }
+	}
 
 	// if(smallestIndex==-1)//there is no place to put pages
 	// {
