@@ -159,7 +159,19 @@ int main( int argc, const char* argv[] )
 				{
 					for(int i=0; i<runQueue.size(); i++)
 					{
-						runQueue[i].addCpuCycle(feedSize);
+						runQueue[i].cpuCycle += feedSize;
+					}
+					if(running)
+					{
+						runningProcess.cpuCycle += feedSize;
+					}
+					for(int i=0; i<SleepList.size(); i++)
+					{
+						SleepList[i].cpuCycle += feedSize;
+					}
+					for(int i=0; i<IOWaitList.size(); i++)
+					{
+						IOWaitList[i].cpuCycle += feedSize;
 					}
 					feedLimit=0;
 				}
@@ -289,8 +301,40 @@ int main( int argc, const char* argv[] )
 					SleepList.push_back(runningProcess);
 				}
 				else//End of Process
-				{
-					
+				{	
+					deque<int> Alloc_list;
+					for(int k=0; k<allocatedFrame.size();k++)
+					{
+						if(allocatedFrame[k][0]==runningProcess.pid)
+						{
+							if(Alloc_list.size()!=0)
+							{
+								if(Alloc_list.back()!=allocatedFrame[k][1])
+								{
+									Alloc_list.push_back(allocatedFrame[k][1]);
+								}
+							}
+							else
+							{
+								Alloc_list.push_back(allocatedFrame[k][1]);
+							}
+						}
+					}
+					for(int k=0; k<Alloc_list.size();k++)
+					{
+						cout<<"ALLOC"<<endl;
+						cout<<Alloc_list[k];
+						memoryRelease(Alloc_list[k],runningProcess);
+					}
+					//Release LRU
+					for(int i=0; i<LRUProcess.size();i++)
+					{
+						if(LRUProcess[i].pid == runningProcess.pid)
+						{
+							LRUProcess.erase(LRUProcess.begin()+i);
+							LRUAllocationID.erase(LRUAllocationID.begin()+i);
+						}
+					}
 				}
 				running=false;
 				timeLimit = 0;
@@ -304,7 +348,37 @@ int main( int argc, const char* argv[] )
 				}
 				else//end of Process
 				{
-
+					deque<int> Alloc_list;
+					for(int k=0; k<allocatedFrame.size();k++)
+					{
+						if(allocatedFrame[k][0]==runningProcess.pid)
+						{
+							if(Alloc_list.size()!=0)
+							{
+								if(Alloc_list.back()!=allocatedFrame[k][1])
+								{
+									Alloc_list.push_back(allocatedFrame[k][1]);
+								}
+							}
+							else
+							{
+								Alloc_list.push_back(allocatedFrame[k][1]);
+							}
+						}
+					}
+					for(int k=0; k<Alloc_list.size();k++)
+					{
+						memoryRelease(Alloc_list[k],runningProcess);
+					}
+					//Release LRU
+					for(int i=0; i<LRUProcess.size();i++)
+					{
+						if(LRUProcess[i].pid == runningProcess.pid)
+						{
+							LRUProcess.erase(LRUProcess.begin()+i);
+							LRUAllocationID.erase(LRUAllocationID.begin()+i);
+						}
+					}
 				}
 				running=false;
 				timeLimit = 0;
@@ -320,8 +394,39 @@ int main( int argc, const char* argv[] )
 			 	timeLimit = 0;
 				runQueue.push_back(runningProcess);
 			}
-			if(runningProcess.currentLine == runningProcess.commandArray.size())//end of process
+			if(runningProcess.currentLine == runningProcess.commandArray.size() && instruction[0]!=4 && instruction[0]!=5)//End of process
 			{
+				deque<int> Alloc_list;
+				for(int k=0; k<allocatedFrame.size();k++)
+				{
+					if(allocatedFrame[k][0]==runningProcess.pid)
+					{
+						if(Alloc_list.size()!=0)
+						{
+							if(Alloc_list.back()!=allocatedFrame[k][1])
+							{
+								Alloc_list.push_back(allocatedFrame[k][1]);
+							}
+						}
+						else
+						{
+							Alloc_list.push_back(allocatedFrame[k][1]);
+						}
+					}
+				}
+				for(int k=0; k<Alloc_list.size();k++)
+				{
+					memoryRelease(Alloc_list[k],runningProcess);
+				}
+				//Release LRU
+				for(int i=0; i<LRUProcess.size();i++)
+				{
+					if(LRUProcess[i].pid == runningProcess.pid)
+					{
+						LRUProcess.erase(LRUProcess.begin()+i);
+						LRUAllocationID.erase(LRUAllocationID.begin()+i);
+					}
+				}
 				running =false;
 				timeLimit = 0;
 			}
@@ -329,7 +434,7 @@ int main( int argc, const char* argv[] )
 		cycle++;//이게 여기 있는게 맞을까 안으로 넣어야 하지 않을까?
 		feedLimit++;
 
-		if(cycle==70)//terminate 조건은 모든 러닝. 그리고 리스트 들이 비어있고. 또한 인스트럭션이 안남아 있을때!
+		if(!running && runQueue.size()==0 &&SleepList.size()==0 && IOWaitList.size()==0 && line.empty())
 		{
 			terminate=true;
 		}
@@ -376,16 +481,6 @@ void memoryAllocation(int pageNum, Process &RunningProcess)
 			for(int i=0; i<buddyMemory.size(); i++)
 			{
 				// && allocatedFrame[buddySlice[i]][0]==-1
-				// for(int i=0; i<buddySlice.size();i++)
-				// {
-				// 	cout<<buddySlice[i]<<" ";
-				// }
-				// cout<<endl;
-				// for(int i=0; i<buddyMemory.size();i++)
-				// {
-				// 	cout<<buddyMemory[i]<<" ";
-				// }
-				// cout<<endl;
 				if(buddyMemory[i]<smallestMemory && buddyMemory[i]>pageNum && allocatedFrame[buddySlice[i]][0]==-1)//그리고 다른 페이지가 들어가 있으면 안된다. 추가로
 		// 			//슬라이스 생겨도 차있는지 확인할수 있어야 한다.usage 덱을 하나 더 만들어?0,1 불 들어가 있는걸로?
 		// 			//아니면 시작 프레임이 페이지에 저장되어 있으면 그걸로 확인하면 되나?
@@ -556,6 +651,7 @@ void memoryRelease(int AllocationId, Process &RunningProcess)
 	bool buddyFront;
 	while(1)
 	{
+		cout<<"AGAIN"<<endl;
 		if(address%(length*2)==0)
 		{
 			//만약 합칠수없으면 바로 브레이크 합칠수 있으면 합치고 index랑 length 바꾸기. 슬라이스도 같이 수정하기
@@ -605,5 +701,10 @@ void memoryRelease(int AllocationId, Process &RunningProcess)
 			cout<<buddySlice[i]<<" ";
 		}
 		cout<<endl;
+		if(buddySlice.size()==2)
+		{
+			return;
+		}
 	}
+	cout<<"FINISHED"<<endl;
 }
