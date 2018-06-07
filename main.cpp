@@ -344,44 +344,6 @@ int main( int argc, const char* argv[] )
 					runningProcess.sleepLimit = instruction[1];
 					SleepList.push_back(runningProcess);
 				}
-				else//End of Process
-				{	
-					vector<int> Alloc_list;
-					for(int k=0; k<allocatedFrame.size();k++)
-					{
-						if(allocatedFrame[k][0]==runningProcess.pid)
-						{
-							if(Alloc_list.size()!=0)
-							{
-								if(Alloc_list.back()!=allocatedFrame[k][1])
-								{
-									Alloc_list.push_back(allocatedFrame[k][1]);
-								}
-							}
-							else
-							{
-								Alloc_list.push_back(allocatedFrame[k][1]);
-							}
-						}
-					}
-					sort(Alloc_list.begin(), Alloc_list.end());
-					for(int k=0; k<Alloc_list.size();k++)
-					{
-						cout<<"ALLOC"<<endl;
-						cout<<Alloc_list[k];
-						bool lru=true;
-						memoryRelease(Alloc_list[k],runningProcess,lru);
-					}
-					//Release LRU
-					for(int i=0; i<LRUProcess.size();i++)
-					{
-						if(LRUProcess[i].pid == runningProcess.pid)
-						{
-							LRUProcess.erase(LRUProcess.begin()+i);
-							LRUAllocationID.erase(LRUAllocationID.begin()+i);
-						}
-					}
-				}
 				running=false;
 				timeLimit = 0;
 				//다음번에 러닝에서 픽이 확실히 안되게 해야한다.
@@ -391,42 +353,6 @@ int main( int argc, const char* argv[] )
 				if(runningProcess.currentLine != runningProcess.commandArray.size())
 				{
 					IOWaitList.push_back(runningProcess);
-				}
-				else//end of Process
-				{
-					vector<int> Alloc_list;
-					for(int k=0; k<allocatedFrame.size();k++)
-					{
-						if(allocatedFrame[k][0]==runningProcess.pid)
-						{
-							if(Alloc_list.size()!=0)
-							{
-								if(Alloc_list.back()!=allocatedFrame[k][1])
-								{
-									Alloc_list.push_back(allocatedFrame[k][1]);
-								}
-							}
-							else
-							{
-								Alloc_list.push_back(allocatedFrame[k][1]);
-							}
-						}
-					}
-					sort(Alloc_list.begin(), Alloc_list.end());
-					for(int k=0; k<Alloc_list.size();k++)
-					{
-						bool lru=true;
-						memoryRelease(Alloc_list[k],runningProcess, lru);
-					}
-					//Release LRU
-					for(int i=0; i<LRUProcess.size();i++)
-					{
-						if(LRUProcess[i].pid == runningProcess.pid)
-						{
-							LRUProcess.erase(LRUProcess.begin()+i);
-							LRUAllocationID.erase(LRUAllocationID.begin()+i);
-						}
-					}
 				}
 				running=false;
 				timeLimit = 0;
@@ -471,7 +397,7 @@ int main( int argc, const char* argv[] )
 			 	timeLimit = 0;
 				runQueue.push_back(runningProcess);
 			}
-			if(runningProcess.currentLine == runningProcess.commandArray.size() && instruction[0]!=4 && instruction[0]!=5)//End of process
+			if(runningProcess.currentLine == runningProcess.commandArray.size())//End of process
 			{
 				vector<int> Alloc_list;
 				for(int k=0; k<allocatedFrame.size();k++)
