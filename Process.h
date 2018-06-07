@@ -5,17 +5,18 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <deque>
 
 class Process
 {
 	private:
 		int cpuCycle;
-		int pid;
 		std::string codeName;
 
 	public:
 		Process();
-		Process(int _cpuCycle, std::string _codeName);
+		Process(int _cpuCycle, std::string _codeName, int _vmPage);
+		int pid;
 		int commandNum;
 		int currentLine;
 		std::vector< std::vector<int> > commandArray;
@@ -28,6 +29,12 @@ class Process
 		void setPid(int _pid);
 		int getCurrentLine();
 		void plusCurrentLine();
+
+		int allocatedNum;
+		std::deque< std::deque<int> > pageTable;
+
+		int sleepTime;
+		int sleepLimit;
 };
 
 #endif

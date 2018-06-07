@@ -15,8 +15,13 @@ int vmPage, pmPage;
 deque<int> buddySlice;
 deque<int> getBuddyMemory(deque<int> BuddySlice);
 void memoryAllocation(int PageNum, Process RunningProcess);
-void memoryAccess(Process RunningProcess);
-void memoryRelease();
+void memoryAccess(int AllocationId, Process RunningProcess);
+void memoryRelease(int AllocationId, Process RunningProcess);
+deque< deque<int> > allocatedFrame;
+deque< deque<int> > LRU;
+
+deque<Process> SleepList;
+deque<Process> IOWaitList;
 
 int main( int argc, const char* argv[] )
 {
@@ -40,6 +45,13 @@ int main( int argc, const char* argv[] )
 	fclose(fp);
 	buddySlice.push_back(0);
 	buddySlice.push_back(pmPage);
+	deque<int> allo;
+	for(int i=0; i<vmPage; i++)//if there is no page allocated in frame. it will be [-1,-1]
+	{
+		allo.push_back(-1);
+		allo.push_back(-1);
+		allocatedFrame.push_back(allo);
+	}
 
 	FILE *fw = fopen("scheduler.txt", "w");
 	ifstream infile("input");
@@ -76,6 +88,17 @@ int main( int argc, const char* argv[] )
 			feedLimit=0;
 		}
 
+		//check SleepList
+		for(int i=0; i<SleepList.size(); i++)
+		{
+			SleepList[i].sleepTime++;
+		}
+		for(int i=0; i<SleepList.size(); i++)
+		{
+			if
+				//그다음에 빼고 runqueue에 다시 넣기?
+		}
+
 	 	//check if this cycle is included in inputs' instruction
 		stringstream ss;
 		ss<<cycle;
@@ -83,10 +106,11 @@ int main( int argc, const char* argv[] )
 		{
 			if(line_array[1]=="INPUT")
 			{
+				//continue???
 			}
 			else
 			{
-				Process proc(feedSize, line_array[1]);
+				Process proc(feedSize, line_array[1], vmPage);
 				cout<<"PUSH CODENAME"<<line_array[1]<<endl;
 				runQueue.push_back(proc);
 			}
@@ -135,11 +159,11 @@ int main( int argc, const char* argv[] )
 			}
 			else if(instruction[0]==1)
 			{
-				memoryAccess(runningProcess);
+				memoryAccess(instruction[1], runningProcess);
 			}
 			else if(instruction[0]==2)
 			{
-				memoryRelease();
+				memoryRelease(instruction[1], runningProcess);
 			}
 			else if(instruction[0]==3)
 			{
@@ -147,9 +171,15 @@ int main( int argc, const char* argv[] )
 			}
 			else if(instruction[0]==4)//sleep
 			{
+				runningProcess.sleepTime = 0;
+				runningProcess.sleepLimit = instruction[1];
+				sleepList.push_back(runningProcess);
+				running=false;
+				//다음번에 러닝에서 픽이 확실히 안되게 해야한다.
 			}
 			else if(instruction[0]==5)//IOWait
 			{
+				running=false;
 			}
 			timeLimit++;
 			runningProcess.currentLine++;
@@ -178,55 +208,140 @@ int main( int argc, const char* argv[] )
 //with BuddySlice that indicates partition address, get BuddyMemory Size
 deque<int> getBuddyMemory(deque<int> BuddySlice)
 {
-	//buddy slice에 0과 끝 먼저 넣어놓고 시작하면 편하겠다.
 	deque<int> buddyMemory;
-	if(BuddySlice.size()==0)
-	int LastIndex = BuddySlice.size()-1;
-	buddyMemory.push_back(BuddySlice[0]);
 	for(int i=1; i<BuddySlice.size(); i++)
 	{
 		buddyMemory.push_back(BuddySlice[i]-BuddySlice[i-1]);
 	}
-	buddyMemory.push_back(pmSize-BuddySlice[LastIndex]);
-
 	return buddyMemory;
 }
 
 void memoryAllocation(int pageNum, Process RunningProcess)
 {
-	//getBuddyMemory 할때 항상 size 0인지 확인할것
 	//계산할때는 페이지로 나눠서 계산하고 이제 write할때는 다시 곱해서 곗ㅑ
-	deque<int> buddyMemory = getBuddyMemory(buddySlice);
-	int smallestMemory=pmSize;//맨처음 슬라이스 아예 없을때에도 괜찮은지 확인 필요
-	int smallestIndex=0;
-	for(int i=0; i<buddyMemory.size(); i++)
-	{
-		if(buddyMemory[i]<smallestMemory && buddyMemory[i]>pageNum)
-		{
-			smallestMemory = buddyMemory[i];
-			smallestIndex=i;
-		}
-	}
+	// deque<int> buddyMemory = getBuddyMemory(buddySlice);
+	// int smallestMemory=pmSize+1;//맨처음 슬라이스 아예 없을때에도 괜찮은지 확인 필요 맨처음 슬라이스 일때도 들어갈수
+	// //있는건지 확인해야 하는데...
+	// int smallestIndex=-1;
+	
+	// //smallestIndex=-1이라는 건 들어갈 자리가 없다는 거다. LRU 이용해야해.
+	// //줄일 필요 없이 그대로 넣으면?
+	// while(smallestMemory>=2*pageNum)//while 잘돌아가게 만들어야 하는데
+	// {//프린트로계속 중간중간 확인
+	// 	buddySlice.insert(buddySlice.begin()+smallestIndex+1, buddySlice[smallestIndex+1]-buddySlice[smallestIndex]);
+	// 	buddyMemory = getBuddyMemory(buddySlice);
+	// 	//smallestMemory = pmSize;
+	// 	//smallestIndex = 0;
+	// 	for(int i=0; i<buddyMemory.size(); i++)
+	// 	{
+	// 		if(buddyMemory[i]<smallestMemory && buddyMemory[i]>pageNum && allocatedFrame[buddySlice[i]][0]==-1)//그리고 다른 페이지가 들어가 있으면 안된다. 추가로
+	// 			//슬라이스 생겨도 차있는지 확인할수 있어야 한다.usage 덱을 하나 더 만들어?0,1 불 들어가 있는걸로?
+	// 			//아니면 시작 프레임이 페이지에 저장되어 있으면 그걸로 확인하면 되나?
+	// 		{
+	// 			smallestMemory = buddyMemory[i];
+	// 			smallestIndex=i;
+	// 		}
+	// 	}
+	// 	//어느 인덱스에 넣어야 하지?
+	// 	//만약 4배보다 같거나 크면?
+	// }
 
-	while(smallestMemory>=2*pageNum)
-	{
-		//어느 인덱스에 넣어야 하지?
-		//만약 4배보다 같거나 크면?
-	}
+	// if(smallestIndex==-1)//there is no place to put pages
+	// {
+	// 	//LRU 이용 빼기
+	// }
+
+	//그다음에 자리 할당. allocatedFrame까지 수정
+
+	
 
 	//다 정한 다음에야 페이지 테이블 정해야지.
 
-
+	//만약 들어갈 공간 없으면 LRUdlsep..
 	//if vmPage>pageNum
 	//	Memory/2;
 	//check memory;//deque에서 전에거랑 현재 인덱스 빼면 공간이네..이중에서 가장 좁은거 뽑자.
 }
 
-void memoryAccess(Process RunningProcess)
+void memoryAccess(int AllocationId, Process RunningProcess)
 {
 	//LRU 갱신
+	deque<int> tmp;
+	tmp.push_back(RunningProcess.pid);
+	tmp.push_back(AllocationId);
+	LRU.push_back(tmp);
 }
 
-void memoryRelease()
+void memoryRelease(int AllocationId, Process RunningProcess)
 {
+	int address;
+	for(int i=0; i<pmPage; i++)
+	{
+		if(allocatedFrame[i][0] == RunningProcess.pid && allocatedFrame[i][1] == AllocationId)
+		{
+			address = i;
+		}
+	}
+	int length;
+	for(int i=0; i<buddySlice.size(); i++)
+	{
+		if(buddySlice[i]==address)
+		{
+			length = buddySlice[i+1]-buddySlice[i];
+		}
+	}
+
+	//Release Physical Memory
+	for(int i=address; i<address+length; i++)
+	{
+		allocatedFrame[i][0]=-1;
+		allocatedFrame[i][0]=-1;
+	}
+
+
+	//Merge Buddy System
+	int buddyAddress;
+	int buddyLength;
+	bool buddyFront;
+	while(1)
+	{
+		if(address%(length*2)==0)
+		{
+			//만약 합칠수없으면 바로 브레이크 합칠수 있으면 합치고 index랑 length 바꾸기. 슬라이스도 같이 수정하기
+			buddyAddress = address+length;
+			buddyFront = false;
+		}
+		else if(address%(length*2)==length)
+		{
+			buddyAddress = address-length;
+			buddyFront = true;
+			//아니면 index를 여기서 바꿔도 괜찮나?
+		}
+		for(int i=0; i<buddySlice.size(); i++)
+		{
+			if(buddySlice[i]==buddyAddress)
+			{
+				buddyLength = buddySlice[i+1]-buddySlice[i];
+				if(buddyLength==length)//able to merge
+				{
+					if(buddyFront)
+					{
+						buddySlice.erase(buddySlice.begin()+i+1);
+						address = buddyAddress;
+						length = 2*length;
+					}
+					else
+					{
+						buddySlice.erase(buddySlice.begin()+i);
+						address = address;
+						length = 2*length;
+					}
+				}
+				else//unable to merge
+				{
+					return;//return 괜찮나? while만 빠져나오는거 알면 좋은데
+				}
+			}
+		}
+	}
 }
