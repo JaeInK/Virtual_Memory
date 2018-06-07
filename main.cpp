@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sstream>
 #include <deque>
+#include <algorithm>
 
 #include "Process.h"
 
@@ -24,6 +25,8 @@ deque<int> LRUAllocationID;
 
 deque<Process> SleepList;
 deque<Process> IOWaitList;
+
+FILE *me;
 
 int main( int argc, const char* argv[] )
 {
@@ -56,7 +59,7 @@ int main( int argc, const char* argv[] )
 
 	FILE *fw = fopen("scheduler.txt", "w");
 	FILE *sy = fopen("system.txt", "w");
-	FILE *me = fopen("memory.txt", "w");
+	me = fopen("memory.txt", "w");
 	ifstream infile("input");
 	getline(infile, line);
 	line="";
@@ -302,7 +305,7 @@ int main( int argc, const char* argv[] )
 				}
 				else//End of Process
 				{	
-					deque<int> Alloc_list;
+					vector<int> Alloc_list;
 					for(int k=0; k<allocatedFrame.size();k++)
 					{
 						if(allocatedFrame[k][0]==runningProcess.pid)
@@ -320,6 +323,7 @@ int main( int argc, const char* argv[] )
 							}
 						}
 					}
+					sort(Alloc_list.begin(), Alloc_list.end());
 					for(int k=0; k<Alloc_list.size();k++)
 					{
 						cout<<"ALLOC"<<endl;
@@ -348,7 +352,7 @@ int main( int argc, const char* argv[] )
 				}
 				else//end of Process
 				{
-					deque<int> Alloc_list;
+					vector<int> Alloc_list;
 					for(int k=0; k<allocatedFrame.size();k++)
 					{
 						if(allocatedFrame[k][0]==runningProcess.pid)
@@ -366,6 +370,7 @@ int main( int argc, const char* argv[] )
 							}
 						}
 					}
+					sort(Alloc_list.begin(), Alloc_list.end());
 					for(int k=0; k<Alloc_list.size();k++)
 					{
 						memoryRelease(Alloc_list[k],runningProcess);
@@ -396,7 +401,7 @@ int main( int argc, const char* argv[] )
 			}
 			if(runningProcess.currentLine == runningProcess.commandArray.size() && instruction[0]!=4 && instruction[0]!=5)//End of process
 			{
-				deque<int> Alloc_list;
+				vector<int> Alloc_list;
 				for(int k=0; k<allocatedFrame.size();k++)
 				{
 					if(allocatedFrame[k][0]==runningProcess.pid)
@@ -414,6 +419,7 @@ int main( int argc, const char* argv[] )
 						}
 					}
 				}
+				sort(Alloc_list.begin(), Alloc_list.end());
 				for(int k=0; k<Alloc_list.size();k++)
 				{
 					memoryRelease(Alloc_list[k],runningProcess);
@@ -544,6 +550,7 @@ void memoryAllocation(int pageNum, Process &RunningProcess)
 	//if vmPage>pageNum
 	//	Memory/2;
 	//check memory;//deque에서 전에거랑 현재 인덱스 빼면 공간이네..이중에서 가장 좁은거 뽑자.
+	fprintf(me, "%d\t%d\t%d\t%d\n", cycle, RunningProcess.pid, RunningProcess.allocatedNum, 0);
 }
 
 void memoryAccess(int AllocationId, Process &RunningProcess)
@@ -593,6 +600,8 @@ void memoryAccess(int AllocationId, Process &RunningProcess)
 	}
 	LRUAllocationID.push_back(AllocationId);
 	LRUProcess.push_back(RunningProcess);
+
+	fprintf(me, "%d\t%d\t%d\t%d\n", cycle, RunningProcess.pid, AllocationId, 1);
 }
 
 void memoryRelease(int AllocationId, Process &RunningProcess)
@@ -703,8 +712,10 @@ void memoryRelease(int AllocationId, Process &RunningProcess)
 		cout<<endl;
 		if(buddySlice.size()==2)
 		{
+			fprintf(me, "%d\t%d\t%d\t%d\n", cycle, RunningProcess.pid, AllocationId, 2);
 			return;
 		}
 	}
 	cout<<"FINISHED"<<endl;
+	fprintf(me, "%d\t%d\t%d\t%d\n", cycle, RunningProcess.pid, AllocationId, 2);
 }
