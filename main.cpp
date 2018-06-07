@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <string.h>
+#include <string>
 #include <sstream>
 #include <deque>
 #include <algorithm>
@@ -56,6 +57,33 @@ int main( int argc, const char* argv[] )
 		allo.push_back(-1);
 		allocatedFrame.push_back(allo);
 	}
+	ifstream INfile("input");
+	getline(INfile, line);
+	int processNumber = 0;
+	for(int k=0; k<EventNum;k++)
+	{
+		getline(INfile, line);
+		istringstream iss(line);
+		string word;
+		for(int i=0;i<3;i++)
+		{
+			iss>>word;
+			line_array[i]=word;
+		}
+		if(line_array[1]!="INPUT")
+		{
+			processNumber++;
+		}
+	}
+	vector<FILE *> files;
+	for(int k=0; k<processNumber; k++)
+	{
+		stringstream kk;
+		kk<<k;
+		FILE *tmpFile = fopen(kk.str().append(".txt").c_str(), "w");
+		files.push_back(tmpFile);
+	}
+	fprintf(files[0],"\n");
 
 	FILE *fw = fopen("scheduler.txt", "w");
 	FILE *sy = fopen("system.txt", "w");
@@ -388,6 +416,35 @@ int main( int argc, const char* argv[] )
 				running=false;
 				timeLimit = 0;
 			}
+			////////Print Pid.txt
+			fprintf(files[runningProcess.pid], "%d Cycle#Instruction op %d arg %d\n", cycle, instruction[0], instruction[1]);
+			fprintf(files[runningProcess.pid], "AllocID");
+			for(int i=0; i<runningProcess.pageTable.size();i++) 
+			{
+			    if(i%4==0)
+					{
+			      fprintf(files[runningProcess.pid], "|");
+					}
+			    if(runningProcess.pageTable[i][0] != -1)
+					{
+			      fprintf(files[runningProcess.pid], "%d", runningProcess.pageTable[i][0]);
+					}
+			    else
+			      fprintf(files[runningProcess.pid], "-");
+			}
+			fprintf(files[runningProcess.pid], "|\n");
+			fprintf(files[runningProcess.pid], "Valid  ");
+			for(int i=0; i<runningProcess.pageTable.size();i++) 
+			{
+			    if(i%4==0)
+					{
+			      fprintf(files[runningProcess.pid], "|");
+					}
+			    fprintf(files[runningProcess.pid], "%d", runningProcess.pageTable[i][1]);
+			}
+			fprintf(files[runningProcess.pid], "|\n");
+			fprintf(files[runningProcess.pid], "\n");
+			////////Print Pid.txt Finished
 
 
 			//what if currentLine == commandNum-1? 언제 터미네이트
