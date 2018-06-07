@@ -15,13 +15,6 @@ Process::Process(int _cpuCycle, string _codeName, int _vmPage)
 	currentLine = 0;
 	pid = -1;
 	allocatedNum = 0;
-	deque<int> _page;
-	for(int i=0; i<_vmPage; i++)
-	{
-		_page.push_back(-1);//AllocationId
-		_page.push_back(0);//ValidBit
-		pageTable.push_back(_page);
-	}
 
 	//make commandNum and commandArray
 	string line;

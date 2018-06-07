@@ -31,7 +31,6 @@ class Process
 		void plusCurrentLine();
 
 		int allocatedNum;
-		std::deque< std::deque<int> > pageTable;
 
 		int sleepTime;
 		int sleepLimit;

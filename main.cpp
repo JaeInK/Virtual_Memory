@@ -27,6 +27,8 @@ deque<int> LRUAllocationID;
 deque<Process> SleepList;
 deque<Process> IOWaitList;
 
+deque< deque< deque<int> > > pageTable;
+
 FILE *me;
 
 int main( int argc, const char* argv[] )
@@ -76,12 +78,23 @@ int main( int argc, const char* argv[] )
 		}
 	}
 	vector<FILE *> files;
+
 	for(int k=0; k<processNumber; k++)
 	{
 		stringstream kk;
 		kk<<k;
 		FILE *tmpFile = fopen(kk.str().append(".txt").c_str(), "w");
 		files.push_back(tmpFile);
+
+		deque<int> _page;
+		deque< deque<int> > _Table;
+		for(int i=0; i<vmPage; i++)
+		{
+			_page.push_back(-1);//AllocationId
+			_page.push_back(0);//ValidBit
+			_Table.push_back(_page);
+		}
+		pageTable.push_back(_Table);
 	}
 
 	FILE *fw = fopen("scheduler.txt", "w");
@@ -418,28 +431,28 @@ int main( int argc, const char* argv[] )
 			////////Print Pid.txt
 			fprintf(files[runningProcess.pid], "%d Cycle#Instruction op %d arg %d\n", cycle, instruction[0], instruction[1]);
 			fprintf(files[runningProcess.pid], "AllocID");
-			for(int i=0; i<runningProcess.pageTable.size();i++) 
+			for(int i=0; i<pageTable[runningProcess.pid].size();i++) 
 			{
 			    if(i%4==0)
 					{
 			      fprintf(files[runningProcess.pid], "|");
 					}
-			    if(runningProcess.pageTable[i][0] != -1)
+			    if(pageTable[runningProcess.pid][i][0] != -1)
 					{
-			      fprintf(files[runningProcess.pid], "%d", runningProcess.pageTable[i][0]);
+			      fprintf(files[runningProcess.pid], "%d", pageTable[runningProcess.pid][i][0]);
 					}
 			    else
 			      fprintf(files[runningProcess.pid], "-");
 			}
 			fprintf(files[runningProcess.pid], "|\n");
 			fprintf(files[runningProcess.pid], "Valid  ");
-			for(int i=0; i<runningProcess.pageTable.size();i++) 
+			for(int i=0; i<pageTable[runningProcess.pid].size();i++) 
 			{
 			    if(i%4==0)
 					{
 			      fprintf(files[runningProcess.pid], "|");
 					}
-			    fprintf(files[runningProcess.pid], "%d", runningProcess.pageTable[i][1]);
+			    fprintf(files[runningProcess.pid], "%d", pageTable[runningProcess.pid][i][1]);
 			}
 			fprintf(files[runningProcess.pid], "|\n");
 			fprintf(files[runningProcess.pid], "\n");
@@ -577,13 +590,25 @@ void memoryAllocation(int pageNum, Process &RunningProcess)
 		allocatedFrame[i][1] = RunningProcess.allocatedNum;
 	}
 	//pageTable 수정 필요
-	int num=0;
-	for(int i=0; i<RunningProcess.pageTable.size();i++)
+	bool ter =true;
+	for(int i=0; i<pageTable[RunningProcess.pid].size();i++)
 	{
-		if(RunningProcess.pageTable[i][0]==-1)
+		if(pageTable[RunningProcess.pid][i][0]==RunningProcess.allocatedNum)
 		{
-			RunningProcess.pageTable[i][0] = RunningProcess.allocatedNum;
-			RunningProcess.pageTable[i][1] = 1;
+			pageTable[RunningProcess.pid][i][1]=1;
+			ter = false;
+		}
+	}
+	int num=0;
+	for(int i=0; i<pageTable[RunningProcess.pid].size();i++)
+	{
+		if(pageTable[RunningProcess.pid][i][0]==-1)
+		{
+			if(ter)
+			{
+				pageTable[RunningProcess.pid][i][0] = RunningProcess.allocatedNum;
+				pageTable[RunningProcess.pid][i][1] = 1;
+			}
 			num++;
 		}
 		if(num==pageNum)
@@ -591,9 +616,9 @@ void memoryAllocation(int pageNum, Process &RunningProcess)
 			break;
 		}
 	}
-	for(int j=0; j<RunningProcess.pageTable.size();j++)
+	for(int j=0; j<pageTable[RunningProcess.pid].size();j++)
 	{
-		cout<<RunningProcess.pageTable[j][0];
+		cout<<pageTable[RunningProcess.pid][j][0];
 	}
 	//allocatedNUm이미 있는경우도 있나?
 	LRUProcess.push_back(RunningProcess);
@@ -624,10 +649,10 @@ void memoryAccess(int AllocationId, Process &RunningProcess)
 	if(!exist)
 	{
 		int Num=0;
-		for(int j=0; j<RunningProcess.pageTable.size();j++)
+		for(int j=0; j<pageTable[RunningProcess.pid].size();j++)
 		{
-			cout<<RunningProcess.pageTable[j][0];
-			if(RunningProcess.pageTable[j][0]==AllocationId)
+			cout<<pageTable[RunningProcess.pid][j][0];
+			if(pageTable[RunningProcess.pid][j][0]==AllocationId)
 			{
 				Num++;
 			}
@@ -635,8 +660,6 @@ void memoryAccess(int AllocationId, Process &RunningProcess)
 		cout<<endl;
 		int tmp = RunningProcess.allocatedNum;
 		RunningProcess.allocatedNum = AllocationId;
-		cout<<"NUMM";
-		cout<<Num<<endl;;
 		memoryAllocation(Num, RunningProcess);
 		RunningProcess.allocatedNum = tmp;
 		//페이지테이블통해서 페이지 개수 구하고. 그만큼 그냥 다시 할당. Allocation ID 설정 해야하나?
@@ -698,11 +721,11 @@ void memoryRelease(int AllocationId, Process &RunningProcess)
 	}
 
 	//Release Virtual Memory
-	for(int i=0; i<RunningProcess.pageTable.size();i++)
+	for(int i=0; i<pageTable[RunningProcess.pid].size();i++)
 	{
-		if(RunningProcess.pageTable[i][0]==AllocationId)
+		if(pageTable[RunningProcess.pid][i][0]==AllocationId)
 		{
-			RunningProcess.pageTable[i][1]=0;
+			pageTable[RunningProcess.pid][i][1]=0;
 		}
 	}
 
