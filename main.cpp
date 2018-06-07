@@ -12,10 +12,11 @@ using namespace std;
 int EventNum, timeQuantum, vmSize, pmSize, pageSize, feedFreq, feedSize;
 int vmPage, pmPage;
 
+deque<int> buddySlice;
+deque<int> getBuddyMemory(deque<int> BuddySlice);
 void memoryAllocation(int PageNum, Process RunningProcess);
 void memoryAccess(Process RunningProcess);
 void memoryRelease();
-deque<int> buddySlice;
 
 int main( int argc, const char* argv[] )
 {
@@ -37,6 +38,8 @@ int main( int argc, const char* argv[] )
 	vmPage = vmSize/pageSize;
 	pmPage = pmSize/pageSize;
 	fclose(fp);
+	buddySlice.push_back(0);
+	buddySlice.push_back(pmPage);
 
 	FILE *fw = fopen("scheduler.txt", "w");
 	ifstream infile("input");
@@ -44,7 +47,7 @@ int main( int argc, const char* argv[] )
 	line="";
 	
 	while(!terminate)
-	{
+	{//한줄씩 읽게 하는거 아직 안했다. 그리고 싸이클 잘 확인해야 한다.
 		cout<<"CYCLE"<<cycle<<endl;
 		//line is empty means that inputs' instruction is processed so you need to read next instruction
 		if(line.empty())
@@ -172,27 +175,48 @@ int main( int argc, const char* argv[] )
 	return 0;
 }
 
+//with BuddySlice that indicates partition address, get BuddyMemory Size
+deque<int> getBuddyMemory(deque<int> BuddySlice)
+{
+	//buddy slice에 0과 끝 먼저 넣어놓고 시작하면 편하겠다.
+	deque<int> buddyMemory;
+	if(BuddySlice.size()==0)
+	int LastIndex = BuddySlice.size()-1;
+	buddyMemory.push_back(BuddySlice[0]);
+	for(int i=1; i<BuddySlice.size(); i++)
+	{
+		buddyMemory.push_back(BuddySlice[i]-BuddySlice[i-1]);
+	}
+	buddyMemory.push_back(pmSize-BuddySlice[LastIndex]);
+
+	return buddyMemory;
+}
+
 void memoryAllocation(int pageNum, Process RunningProcess)
 {
+	//getBuddyMemory 할때 항상 size 0인지 확인할것
 	//계산할때는 페이지로 나눠서 계산하고 이제 write할때는 다시 곱해서 곗ㅑ
-	//deque<int> buddyMemory;
-	//int start=0;
-	//if(buddySlice.size()>0)
-	//{
-	//	buddyMemory.push
-	//	for(int i=0; i<buddySlice.size(); i++)
-	//	{
-	//		if(i=0)
-	//		{
-	//			buddyMemory.push(buddySlice[0]);
-	//		}
-	//		else if(i=buddySlice.size()-1)
-	//		{
-	//			buddyMemory.push(pmPage-buddySlice[i]);
-	//		}
-	//		buddyMemory.push(buddyslice[i] - buddyslice[i-1])
-	//	}
-	//}
+	deque<int> buddyMemory = getBuddyMemory(buddySlice);
+	int smallestMemory=pmSize;//맨처음 슬라이스 아예 없을때에도 괜찮은지 확인 필요
+	int smallestIndex=0;
+	for(int i=0; i<buddyMemory.size(); i++)
+	{
+		if(buddyMemory[i]<smallestMemory && buddyMemory[i]>pageNum)
+		{
+			smallestMemory = buddyMemory[i];
+			smallestIndex=i;
+		}
+	}
+
+	while(smallestMemory>=2*pageNum)
+	{
+		//어느 인덱스에 넣어야 하지?
+		//만약 4배보다 같거나 크면?
+	}
+
+	//다 정한 다음에야 페이지 테이블 정해야지.
+
+
 	//if vmPage>pageNum
 	//	Memory/2;
 	//check memory;//deque에서 전에거랑 현재 인덱스 빼면 공간이네..이중에서 가장 좁은거 뽑자.
