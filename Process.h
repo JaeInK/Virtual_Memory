@@ -11,12 +11,12 @@ class Process
 {
 	private:
 		int cpuCycle;
-		std::string codeName;
 
 	public:
 		Process();
 		Process(int _cpuCycle, std::string _codeName, int _vmPage);
 		int pid;
+		std::string codeName;
 		int commandNum;
 		int currentLine;
 		std::vector< std::vector<int> > commandArray;

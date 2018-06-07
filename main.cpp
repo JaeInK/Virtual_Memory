@@ -46,7 +46,7 @@ int main( int argc, const char* argv[] )
 	buddySlice.push_back(0);
 	buddySlice.push_back(pmPage);
 	deque<int> allo;
-	for(int i=0; i<vmPage; i++)//if there is no page allocated in frame. it will be [-1,-1]
+	for(int i=0; i<pmPage; i++)//if there is no page allocated in frame. it will be [-1,-1]
 	{
 		allo.push_back(-1);
 		allo.push_back(-1);
@@ -54,13 +54,14 @@ int main( int argc, const char* argv[] )
 	}
 
 	FILE *fw = fopen("scheduler.txt", "w");
+	FILE *sy = fopen("system.txt", "w");
+	FILE *me = fopen("memory.txt", "w");
 	ifstream infile("input");
 	getline(infile, line);
 	line="";
 	
 	while(!terminate)
-	{//한줄씩 읽게 하는거 아직 안했다. 그리고 싸이클 잘 확인해야 한다.
-		cout<<"CYCLE"<<cycle<<endl;
+	{
 		//line is empty means that inputs' instruction is processed so you need to read next instruction
 		if(line.empty())
 		{
@@ -85,7 +86,8 @@ int main( int argc, const char* argv[] )
 			{
 				runQueue[i].addCpuCycle(feedSize);
 			}
-			feedLimit=0;
+			//실행중인거 어떻게 주지? sleep 이랑 IO일때는 흠 runningProcess 안바꿔줬는데 
+			//여기서 슬립이랑 IO도 줘야하고 런큐도 못돌릴때도 다 줘야해ㅣ
 		}
 
 		//check SleepList
@@ -95,20 +97,31 @@ int main( int argc, const char* argv[] )
 		}
 		for(int i=0; i<SleepList.size(); i++)
 		{
-			if
-				//그다음에 빼고 runqueue에 다시 넣기?
+			if(SleepList[i].sleepTime == SleepList[i].sleepLimit)
+			{
+				runQueue.push_back(SleepList[i]);
+				SleepList.erase(SleepList.begin()+i);
+			}
 		}
 
 	 	//check if this cycle is included in inputs' instruction
-		stringstream ss;
+		stringstream ss, pp;
 		ss<<cycle;
 		if(line_array[0]==ss.str())
 		{
-			if(line_array[1]=="INPUT")
+			if(line_array[1]=="INPUT")//IO Call
 			{
-				//continue???
+				for(int i=0; i<IOWaitList.size(); i++)
+				{
+					pp<<IOWaitList[i].pid;
+					if(pp.str() == line_array[2])
+					{
+						runQueue.push_back(IOWaitList[i]);
+						IOWaitList.erase(IOWaitList.begin()+i);
+					}
+				}
 			}
-			else
+			else //Produce Process
 			{
 				Process proc(feedSize, line_array[1], vmPage);
 				cout<<"PUSH CODENAME"<<line_array[1]<<endl;
@@ -148,10 +161,87 @@ int main( int argc, const char* argv[] )
 			fprintf(fw, "%d\t%d\t%s\n", cycle, runningProcess.getPid(), runningProcess.getCodeName().c_str());
 		}
 
-		//keep running if there is running process
+		//Print system.txt
+		fprintf(sy, "%d Cycle: ", cycle);
 		if(running)
 		{
-			cout<<"RUNNING CODE"<<runningProcess.getCodeName()<<"\n"<<endl;
+			vector<int> instruction = runningProcess.commandArray[runningProcess.currentLine];
+			fprintf(sy, "Process#%d running code %s line %d(op %d, arg %d)\n", runningProcess.pid, runningProcess.codeName.c_str(), runningProcess.currentLine+1, instruction[0], instruction[1]);
+		}	
+		else
+		{
+    	fprintf(sy, "\n");
+		}
+		fprintf(sy, "RunQueue: ");
+		if(runQueue.size()==0)
+		{
+		    fprintf(sy, "Empty\n");
+		}
+		else
+		{
+		    for(int i=0; i<runQueue.size(); i++)
+				{
+		      fprintf(sy, "%d(%s) ", runQueue[i].pid, runQueue[i].codeName.c_str());
+				}
+		}
+		fprintf(sy, "SleepList: ");
+		if(SleepList.size()==0)
+		{
+    	fprintf(sy, "Empty\n");
+		}
+		else
+		{
+    	for(int i=0; i<SleepList.size(); i++)
+			{
+        fprintf(sy, "%d(%s) ", SleepList[i].pid, SleepList[i].codeName.c_str());
+			}
+		}
+		fprintf(sy, "IOWait List: ");
+		if(IOWaitList.size()==0)
+		{
+    	fprintf(sy, "Empty\n");
+		}
+		else
+		{
+    	for(int i=0; i<IOWaitList.size(); i++)
+			{
+        fprintf(sy, "%d(%s) ", IOWaitList[i].pid, IOWaitList[i].codeName.c_str());
+			}
+		}
+		fprintf(sy, "|");
+		for(int i=0; i<allocatedFrame.size(); i++) 
+		{
+    	char sep = ' ';
+			for(int j=1; j<buddySlice.size(); j++)
+			{
+				if(i==buddySlice[j])
+				{
+					sep='|';
+				}
+			}
+    	if(allocatedFrame[i][0]==-1) 
+			{
+        fprintf(sy, "---%c", sep);
+    	} 
+			else 
+			{
+        fprintf(sy, "%d#%d%c", allocatedFrame[i][0], allocatedFrame[i][1], sep);
+    	}
+		}
+		fprintf(sy, "\n");
+		// // Line 6
+		fprintf(sy, "LRU:");
+		for(int i=0; i<LRU.size(); i++)
+		{
+		  fprintf(sy, " (%d:%d)", LRU[i][0], LRU[i][1]);
+		}
+		fprintf(sy, "\n");
+		// 매 사이클이 끝나면 다음 사이클과 구분을 위해 개행문자 필요
+		fprintf(sy, "\n");
+
+		//Run Process
+		if(running)
+		{
 			vector<int> instruction = runningProcess.commandArray[runningProcess.currentLine];
 			if(instruction[0]==0)
 			{
@@ -173,12 +263,13 @@ int main( int argc, const char* argv[] )
 			{
 				runningProcess.sleepTime = 0;
 				runningProcess.sleepLimit = instruction[1];
-				sleepList.push_back(runningProcess);
+				SleepList.push_back(runningProcess);
 				running=false;
 				//다음번에 러닝에서 픽이 확실히 안되게 해야한다.
 			}
 			else if(instruction[0]==5)//IOWait
 			{
+				IOWaitList.push_back(runningProcess);
 				running=false;
 			}
 			timeLimit++;
@@ -249,7 +340,7 @@ void memoryAllocation(int pageNum, Process RunningProcess)
 	// if(smallestIndex==-1)//there is no place to put pages
 	// {
 	// 	//LRU 이용 빼기
-	// }
+	// }// Line 6
 
 	//그다음에 자리 할당. allocatedFrame까지 수정
 
