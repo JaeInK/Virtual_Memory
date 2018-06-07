@@ -11,14 +11,16 @@ using namespace std;
 
 int EventNum, timeQuantum, vmSize, pmSize, pageSize, feedFreq, feedSize;
 int vmPage, pmPage;
+int cycle=0;
 
 deque<int> buddySlice;
 deque<int> getBuddyMemory(deque<int> BuddySlice);
-void memoryAllocation(int PageNum, Process RunningProcess);
-void memoryAccess(int AllocationId, Process RunningProcess);
-void memoryRelease(int AllocationId, Process RunningProcess);
+void memoryAllocation(int PageNum, Process &RunningProcess);
+void memoryAccess(int AllocationId, Process &RunningProcess);
+void memoryRelease(int AllocationId, Process &RunningProcess);
 deque< deque<int> > allocatedFrame;
-deque< deque<int> > LRU;
+deque<Process> LRUProcess;
+deque<int> LRUAllocationID;
 
 deque<Process> SleepList;
 deque<Process> IOWaitList;
@@ -29,7 +31,6 @@ int main( int argc, const char* argv[] )
 	char charline[100];
 	string line;
 	string line_array[3];
-	int cycle=0;
 	deque<Process> runQueue;
 	bool running=false;
 	Process runningProcess;
@@ -66,7 +67,6 @@ int main( int argc, const char* argv[] )
 		if(line.empty())
 		{
 			getline(infile, line);
-			cout<<"LINE"<<line<<endl;	
 			cout.flush();
 			//split line with blank using istringstream
 			istringstream iss(line);
@@ -84,8 +84,21 @@ int main( int argc, const char* argv[] )
 			cout<<"FEED TIME!"<<endl;
 			for(int i=0; i<runQueue.size(); i++)
 			{
-				runQueue[i].addCpuCycle(feedSize);
+				runQueue[i].cpuCycle += feedSize;
 			}
+			if(running)
+			{
+				runningProcess.cpuCycle += feedSize;
+			}
+			for(int i=0; i<SleepList.size(); i++)
+			{
+				SleepList[i].cpuCycle += feedSize;
+			}
+			for(int i=0; i<IOWaitList.size(); i++)
+			{
+				IOWaitList[i].cpuCycle += feedSize;
+			}
+
 			//실행중인거 어떻게 주지? sleep 이랑 IO일때는 흠 runningProcess 안바꿔줬는데 
 			//여기서 슬립이랑 IO도 줘야하고 런큐도 못돌릴때도 다 줘야해ㅣ
 		}
@@ -105,7 +118,7 @@ int main( int argc, const char* argv[] )
 		}
 
 	 	//check if this cycle is included in inputs' instruction
-		stringstream ss, pp;
+		stringstream ss;
 		ss<<cycle;
 		if(line_array[0]==ss.str())
 		{
@@ -113,6 +126,7 @@ int main( int argc, const char* argv[] )
 			{
 				for(int i=0; i<IOWaitList.size(); i++)
 				{
+					stringstream pp;
 					pp<<IOWaitList[i].pid;
 					if(pp.str() == line_array[2])
 					{
@@ -126,7 +140,6 @@ int main( int argc, const char* argv[] )
 				Process proc(feedSize, line_array[1], vmPage);
 				proc.pid = processId;
 				processId++;
-				cout<<"PUSH CODENAME"<<line_array[1]<<endl;
 				runQueue.push_back(proc);
 			}
 			line="";
@@ -151,9 +164,8 @@ int main( int argc, const char* argv[] )
 					feedLimit=0;
 				}
 				runningProcess = runQueue.front();
-				runQueue.pop_front();
-			}
-			cout<<"POP PROCESS"<<runningProcess.getCodeName()<<endl;				
+				runQueue.pop_front();	
+			}			
 			running = true;
 			fprintf(fw, "%d\t%d\t%s\n", cycle, runningProcess.pid, runningProcess.getCodeName().c_str());
 		}
@@ -230,9 +242,9 @@ int main( int argc, const char* argv[] )
 		}
 		fprintf(sy, "\n");
 		fprintf(sy, "LRU:");
-		for(int i=0; i<LRU.size(); i++)
+		for(int i=0; i<LRUProcess.size(); i++)
 		{
-		  fprintf(sy, " (%d:%d)", LRU[i][0], LRU[i][1]);
+		  fprintf(sy, " (%d:%d)", LRUProcess[i].pid, LRUAllocationID[i]);
 		}
 		fprintf(sy, "\n");
 		fprintf(sy, "\n");
@@ -241,52 +253,83 @@ int main( int argc, const char* argv[] )
 		//Run Process
 		if(running)
 		{
+			cout<<"CYCLE"<<cycle<<endl;
 			vector<int> instruction = runningProcess.commandArray[runningProcess.currentLine];
+			cout<<"CODE"<<runningProcess.codeName<<"LINE"<<runningProcess.currentLine+1<<endl;
+			cout<<"IMPLEMENT"<<instruction[0]<<" "<<instruction[1]<<" "<<endl;
+			runningProcess.currentLine++;
+			runningProcess.cpuCycle--;
 			if(instruction[0]==0)
 			{
 				memoryAllocation(instruction[1], runningProcess);
+				runningProcess.allocatedNum++;
+				timeLimit++;
 			}
 			else if(instruction[0]==1)
 			{
 				memoryAccess(instruction[1], runningProcess);
+				timeLimit++;
 			}
 			else if(instruction[0]==2)
 			{
 				memoryRelease(instruction[1], runningProcess);
+				timeLimit++;
 			}
 			else if(instruction[0]==3)
 			{
 				//nothing?
+				timeLimit++;
 			}
 			else if(instruction[0]==4)//sleep
 			{
-				runningProcess.sleepTime = 0;
-				runningProcess.sleepLimit = instruction[1];
-				SleepList.push_back(runningProcess);
+				if(runningProcess.currentLine != runningProcess.commandArray.size())
+				{
+					runningProcess.sleepTime = 0;
+					runningProcess.sleepLimit = instruction[1];
+					SleepList.push_back(runningProcess);
+				}
+				else//End of Process
+				{
+					
+				}
 				running=false;
+				timeLimit = 0;
 				//다음번에 러닝에서 픽이 확실히 안되게 해야한다.
 			}
 			else if(instruction[0]==5)//IOWait
 			{
-				IOWaitList.push_back(runningProcess);
+				if(runningProcess.currentLine != runningProcess.commandArray.size())
+				{
+					IOWaitList.push_back(runningProcess);
+				}
+				else//end of Process
+				{
+
+				}
 				running=false;
+				timeLimit = 0;
 			}
-			timeLimit++;
-			runningProcess.currentLine++;
+
+
 			//what if currentLine == commandNum-1? 언제 터미네이트
 			//unable to keep running
-			if(runningProcess.getCpuCycle()==0 || timeLimit==timeQuantum)
+			if((runningProcess.getCpuCycle()==0 || timeLimit==timeQuantum)&& instruction[0]!=4 && instruction[0]!=5)
 			{
 				cout<<"CANT KEEP RUNNING"<<runningProcess.getCodeName()<<endl;
 			 	running = false;
 			 	timeLimit = 0;
 				runQueue.push_back(runningProcess);
 			}
+			if(runningProcess.currentLine == runningProcess.commandArray.size())//end of process
+			{
+				running =false;
+				timeLimit = 0;
+			}
 		}
 		cycle++;//이게 여기 있는게 맞을까 안으로 넣어야 하지 않을까?
 		feedLimit++;
 
-		if(cycle==30)//terminate 조건은 모든 러닝. 그리고 리스트 들이 비어있고. 또한 인스트럭션이 안남아 있을때!
+		if(cycle==70)//terminate 조건은 모든 러닝. 그리고 리스트 들이 비어있고. 또한 인스트럭션이 안남아 있을때!
 		{
 			terminate=true;
 		}
@@ -306,56 +349,98 @@ deque<int> getBuddyMemory(deque<int> BuddySlice)
 	return buddyMemory;
 }
 
-void memoryAllocation(int pageNum, Process RunningProcess)
+void memoryAllocation(int pageNum, Process &RunningProcess)
 {
 	//계산할때는 페이지로 나눠서 계산하고 이제 write할때는 다시 곱해서 곗ㅑ
 	deque<int> buddyMemory = getBuddyMemory(buddySlice);
-	cout<<"BUDDY"<<endl;
-	for(int i=0; i<buddySlice.size();i++)
-	{
-		cout<<buddySlice[i];
-	}
-	cout<<endl;
-	for(int i=0; i<buddyMemory.size();i++)
-	{
-		cout<<buddyMemory[i];
-	}
-	cout<<"END"<<endl;
 	int smallestMemory=pmSize+1;//맨처음 슬라이스 아예 없을때에도 괜찮은지 확인 필요 맨처음 슬라이스 일때도 들어갈수
 	// //있는건지 확인해야 하는데...
 	int smallestIndex=-1;
 	
 	// //smallestIndex=-1이라는 건 들어갈 자리가 없다는 거다. LRU 이용해야해.
 	// //줄일 필요 없이 그대로 넣으면?
-	while(smallestMemory>=2*pageNum)//while 잘돌아가게 만들어야 하는데
-	{//프린트로계속 중간중간 확	
-		cout<<"AAAAAAAAAAAAa"<<endl;
-		buddySlice.insert(buddySlice.begin()+smallestIndex+1, buddySlice[smallestIndex+1]-buddySlice[smallestIndex]);//여기 지금 마이너스.
-		cout<<"BBBBBBBBBBB"<<endl;
-		buddyMemory = getBuddyMemory(buddySlice);
-		smallestMemory = pmSize;
-		smallestIndex = 0;
-	// 	for(int i=0; i<buddyMemory.size(); i++)
-	// 	{
-	// 		if(buddyMemory[i]<smallestMemory && buddyMemory[i]>pageNum && allocatedFrame[buddySlice[i]][0]==-1)//그리고 다른 페이지가 들어가 있으면 안된다. 추가로
-	// 			//슬라이스 생겨도 차있는지 확인할수 있어야 한다.usage 덱을 하나 더 만들어?0,1 불 들어가 있는걸로?
-	// 			//아니면 시작 프레임이 페이지에 저장되어 있으면 그걸로 확인하면 되나?
-	// 		{
-	// 			smallestMemory = buddyMemory[i];
-	// 			smallestIndex=i;
-	// 		}
-	// 	}
-	// 	//어느 인덱스에 넣어야 하지?
+	while(smallestIndex==-1)//no place to put Process
+	{
+		
+		int loop=1;//와일 안에 위에 것들 넣어야 할지 감이 안잡혀혀
+		while(smallestMemory>=2*pageNum)//while 잘돌아가게 만들어야 하는데
+		{//프린트로계속 중간중간 확	
+			buddyMemory = getBuddyMemory(buddySlice);
+			if(loop!=1)
+			{
+				buddySlice.insert(buddySlice.begin()+smallestIndex+1, (buddySlice[smallestIndex+1]+buddySlice[smallestIndex])/2);//여기 지금 마이너스.;
+				buddyMemory = getBuddyMemory(buddySlice);
+				smallestMemory = pmSize;//여기는 안바꿔?
+				smallestIndex = 0;
+			}
+			for(int i=0; i<buddyMemory.size(); i++)
+			{
+				// && allocatedFrame[buddySlice[i]][0]==-1
+				// for(int i=0; i<buddySlice.size();i++)
+				// {
+				// 	cout<<buddySlice[i]<<" ";
+				// }
+				// cout<<endl;
+				// for(int i=0; i<buddyMemory.size();i++)
+				// {
+				// 	cout<<buddyMemory[i]<<" ";
+				// }
+				// cout<<endl;
+				if(buddyMemory[i]<smallestMemory && buddyMemory[i]>pageNum && allocatedFrame[buddySlice[i]][0]==-1)//그리고 다른 페이지가 들어가 있으면 안된다. 추가로
+		// 			//슬라이스 생겨도 차있는지 확인할수 있어야 한다.usage 덱을 하나 더 만들어?0,1 불 들어가 있는걸로?
+		// 			//아니면 시작 프레임이 페이지에 저장되어 있으면 그걸로 확인하면 되나?
+				{
+					smallestMemory = buddyMemory[i];
+					smallestIndex=i;
+				}
+			}
+			if(smallestIndex==-1)
+			{
+				break;
+			}
+			loop++;
+		// 	//어느 인덱스에 넣어야 하지?
 	// 	//만약 4배보다 같거나 크면?
+		}
+		if(smallestIndex==-1)//there is no place to put pages
+		{
+			cout<<"THERE IS NO PLACE TO ALLOCATE"<<endl;
+			Process popProc = LRUProcess.front();
+			LRUProcess.pop_front();
+			int popAlloc = LRUAllocationID.front();
+			LRUAllocationID.pop_front();
+			cout<<"PUULL OUT"<<popProc.pid<<"#"<<popAlloc<<endl;
+			memoryRelease(popAlloc, popProc);
+		}
 	}
-
-	// if(smallestIndex==-1)//there is no place to put pages
-	// {
-	// 	//LRU 이용 빼기
-	// }// Line 6
-
 	//그다음에 자리 할당. allocatedFrame까지 수정
-
+	for(int i=buddySlice[smallestIndex]; i<buddySlice[smallestIndex+1]; i++)
+	{
+		allocatedFrame[i][0] = RunningProcess.pid;
+		allocatedFrame[i][1] = RunningProcess.allocatedNum;
+	}
+	//pageTable 수정 필요
+	int num=0;
+	for(int i=0; i<RunningProcess.pageTable.size();i++)
+	{
+		if(RunningProcess.pageTable[i][0]==-1)
+		{
+			RunningProcess.pageTable[i][0] = RunningProcess.allocatedNum;
+			RunningProcess.pageTable[i][1] = 1;
+			num++;
+		}
+		if(num==pageNum)
+		{
+			break;
+		}
+	}
+	for(int j=0; j<RunningProcess.pageTable.size();j++)
+	{
+		cout<<RunningProcess.pageTable[j][0];
+	}
+	//allocatedNUm이미 있는경우도 있나?
+	LRUProcess.push_back(RunningProcess);
+	LRUAllocationID.push_back(RunningProcess.allocatedNum);
 	
 
 	//다 정한 다음에야 페이지 테이블 정해야지.
@@ -366,23 +451,74 @@ void memoryAllocation(int pageNum, Process RunningProcess)
 	//check memory;//deque에서 전에거랑 현재 인덱스 빼면 공간이네..이중에서 가장 좁은거 뽑자.
 }
 
-void memoryAccess(int AllocationId, Process RunningProcess)
+void memoryAccess(int AllocationId, Process &RunningProcess)
 {
+	//먼저 존재하는지부터 확인을 해야하는 거다.
+	bool exist = false;
+	for(int i=0; i<allocatedFrame.size(); i++)
+	{
+		if(allocatedFrame[i][0]==RunningProcess.pid && allocatedFrame[i][1]==AllocationId)
+		{
+			exist=true;
+			break;
+		}
+	}
+	if(!exist)
+	{
+		int Num=0;
+		for(int j=0; j<RunningProcess.pageTable.size();j++)
+		{
+			cout<<RunningProcess.pageTable[j][0];
+			if(RunningProcess.pageTable[j][0]==AllocationId)
+			{
+				Num++;
+			}
+		}
+		cout<<endl;
+		int tmp = RunningProcess.allocatedNum;
+		RunningProcess.allocatedNum = AllocationId;
+		cout<<"NUMM";
+		cout<<Num<<endl;;
+		memoryAllocation(Num, RunningProcess);
+		RunningProcess.allocatedNum = tmp;
+		//페이지테이블통해서 페이지 개수 구하고. 그만큼 그냥 다시 할당. Allocation ID 설정 해야하나?
+		//현재 Allocation ID 저장 하고 바꿨다가 다시 돌려놓으면 되겠네/allocatednUm을 잘못말했다.
+	}
 	//LRU 갱신
-	deque<int> tmp;
-	tmp.push_back(RunningProcess.pid);
-	tmp.push_back(AllocationId);
-	LRU.push_back(tmp);
+	for(int i=0; i<LRUProcess.size();i++)
+	{
+		if(LRUProcess[i].pid == RunningProcess.pid)
+		{
+			if(LRUAllocationID[i] == AllocationId)
+			{
+				LRUProcess.erase(LRUProcess.begin()+i);
+				LRUAllocationID.erase(LRUAllocationID.begin()+i);
+			}
+		}
+	}
+	LRUAllocationID.push_back(AllocationId);
+	LRUProcess.push_back(RunningProcess);
 }
 
-void memoryRelease(int AllocationId, Process RunningProcess)
+void memoryRelease(int AllocationId, Process &RunningProcess)
 {
-	int address;
+	cout<<"BEFORE BUDDYSLICE"<<endl;
+	for(int i=0; i<buddySlice.size();i++)
+	{
+		cout<<buddySlice[i]<<" ";
+	}
+	cout<<endl;
+	// for(int i=0; i<buddyMemory.size();i++)
+	// {
+	// 	cout<<buddyMemory[i]<<" ";
+	// }
+	int address=-1;
 	for(int i=0; i<pmPage; i++)
 	{
 		if(allocatedFrame[i][0] == RunningProcess.pid && allocatedFrame[i][1] == AllocationId)
 		{
 			address = i;
+			break;
 		}
 	}
 	int length;
@@ -398,9 +534,21 @@ void memoryRelease(int AllocationId, Process RunningProcess)
 	for(int i=address; i<address+length; i++)
 	{
 		allocatedFrame[i][0]=-1;
-		allocatedFrame[i][0]=-1;
+		allocatedFrame[i][1]=-1;
 	}
 
+	//Release LRU
+	for(int i=0; i<LRUProcess.size();i++)
+	{
+		if(LRUProcess[i].pid == RunningProcess.pid)
+		{
+			if(LRUAllocationID[i] == AllocationId)
+			{
+				LRUProcess.erase(LRUProcess.begin()+i);
+				LRUAllocationID.erase(LRUAllocationID.begin()+i);
+			}
+		}
+	}
 
 	//Merge Buddy System
 	int buddyAddress;
@@ -419,6 +567,11 @@ void memoryRelease(int AllocationId, Process RunningProcess)
 			buddyAddress = address-length;
 			buddyFront = true;
 			//아니면 index를 여기서 바꿔도 괜찮나?
+		}
+
+		if(allocatedFrame[buddyAddress][0]!=-1) //unable to merge because it is alread filled
+		{
+			break;
 		}
 		for(int i=0; i<buddySlice.size(); i++)
 		{
@@ -446,5 +599,11 @@ void memoryRelease(int AllocationId, Process RunningProcess)
 				}
 			}
 		}
+		cout<<"AFTER"<<endl;
+		for(int i=0; i<buddySlice.size();i++)
+		{
+			cout<<buddySlice[i]<<" ";
+		}
+		cout<<endl;
 	}
 }
