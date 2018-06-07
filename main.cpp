@@ -83,7 +83,6 @@ int main( int argc, const char* argv[] )
 		FILE *tmpFile = fopen(kk.str().append(".txt").c_str(), "w");
 		files.push_back(tmpFile);
 	}
-	fprintf(files[0],"\n");
 
 	FILE *fw = fopen("scheduler.txt", "w");
 	FILE *sy = fopen("system.txt", "w");
@@ -567,7 +566,7 @@ void memoryAllocation(int pageNum, Process &RunningProcess)
 			LRUProcess.pop_front();
 			int popAlloc = LRUAllocationID.front();
 			LRUAllocationID.pop_front();
-			cout<<"PUULL OUT"<<popProc.pid<<"#"<<popAlloc<<endl;
+			cout<<"PULL OUT"<<popProc.pid<<"#"<<popAlloc<<endl;
 			memoryRelease(popAlloc, popProc);
 		}
 	}
@@ -696,6 +695,15 @@ void memoryRelease(int AllocationId, Process &RunningProcess)
 	{
 		allocatedFrame[i][0]=-1;
 		allocatedFrame[i][1]=-1;
+	}
+
+	//Release Virtual Memory
+	for(int i=0; i<RunningProcess.pageTable.size();i++)
+	{
+		if(RunningProcess.pageTable[i][0]==AllocationId)
+		{
+			RunningProcess.pageTable[i][1]=0;
+		}
 	}
 
 	//Release LRU
