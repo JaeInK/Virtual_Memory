@@ -19,7 +19,7 @@ deque<int> buddySlice;
 deque<int> getBuddyMemory(deque<int> BuddySlice);
 void memoryAllocation(int PageNum, Process &RunningProcess);
 void memoryAccess(int AllocationId, Process &RunningProcess);
-void memoryRelease(int AllocationId, Process &RunningProcess);
+void memoryRelease(int AllocationId, Process &RunningProcess, bool lru);
 deque< deque<int> > allocatedFrame;
 deque<Process> LRUProcess;
 deque<int> LRUAllocationID;
@@ -327,7 +327,8 @@ int main( int argc, const char* argv[] )
 			}
 			else if(instruction[0]==2)
 			{
-				memoryRelease(instruction[1], runningProcess);
+				bool lru=false;
+				memoryRelease(instruction[1], runningProcess, lru);
 				timeLimit++;
 			}
 			else if(instruction[0]==3)
@@ -368,7 +369,8 @@ int main( int argc, const char* argv[] )
 					{
 						cout<<"ALLOC"<<endl;
 						cout<<Alloc_list[k];
-						memoryRelease(Alloc_list[k],runningProcess);
+						bool lru=true;
+						memoryRelease(Alloc_list[k],runningProcess,lru);
 					}
 					//Release LRU
 					for(int i=0; i<LRUProcess.size();i++)
@@ -413,7 +415,8 @@ int main( int argc, const char* argv[] )
 					sort(Alloc_list.begin(), Alloc_list.end());
 					for(int k=0; k<Alloc_list.size();k++)
 					{
-						memoryRelease(Alloc_list[k],runningProcess);
+						bool lru=true;
+						memoryRelease(Alloc_list[k],runningProcess, lru);
 					}
 					//Release LRU
 					for(int i=0; i<LRUProcess.size();i++)
@@ -491,7 +494,8 @@ int main( int argc, const char* argv[] )
 				sort(Alloc_list.begin(), Alloc_list.end());
 				for(int k=0; k<Alloc_list.size();k++)
 				{
-					memoryRelease(Alloc_list[k],runningProcess);
+					bool lru=true;
+					memoryRelease(Alloc_list[k],runningProcess, lru);
 				}
 				//Release LRU
 				for(int i=0; i<LRUProcess.size();i++)
@@ -580,7 +584,8 @@ void memoryAllocation(int pageNum, Process &RunningProcess)
 			int popAlloc = LRUAllocationID.front();
 			LRUAllocationID.pop_front();
 			cout<<"PULL OUT"<<popProc.pid<<"#"<<popAlloc<<endl;
-			memoryRelease(popAlloc, popProc);
+			bool lru=true;
+			memoryRelease(popAlloc, popProc,lru);
 		}
 	}
 	//그다음에 자리 할당. allocatedFrame까지 수정
@@ -683,7 +688,7 @@ void memoryAccess(int AllocationId, Process &RunningProcess)
 	fprintf(me, "%d\t%d\t%d\t%d\n", cycle, RunningProcess.pid, AllocationId, 1);
 }
 
-void memoryRelease(int AllocationId, Process &RunningProcess)
+void memoryRelease(int AllocationId, Process &RunningProcess, bool lru)
 {
 	cout<<"BEFORE BUDDYSLICE"<<endl;
 	for(int i=0; i<buddySlice.size();i++)
@@ -725,6 +730,10 @@ void memoryRelease(int AllocationId, Process &RunningProcess)
 	{
 		if(pageTable[RunningProcess.pid][i][0]==AllocationId)
 		{
+			if(!lru)
+			{
+				pageTable[RunningProcess.pid][i][0]=-1;
+			}
 			pageTable[RunningProcess.pid][i][1]=0;
 		}
 	}
