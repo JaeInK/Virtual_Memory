@@ -8,7 +8,7 @@ Process::Process()
 {
 }
 
-Process::Process(int _cpuCycle, string _codeName, int _vmPage)
+Process::Process(int _cpuCycle, string _codeName)
 {
 	cpuCycle = _cpuCycle;
 	codeName = _codeName;
@@ -34,38 +34,4 @@ Process::Process(int _cpuCycle, string _codeName, int _vmPage)
 		tmp.push_back(k);
 		commandArray.push_back(tmp);
 	}
-}
-
-int Process::getCommandNum()
-{
-}
-
-string Process::getCodeName()
-{
-	return codeName;
-}
-
-int Process::getPid()
-{
-	return pid;
-}
-
-int Process::getCpuCycle()
-{
-	return cpuCycle;
-}
-
-void Process::addCpuCycle(int i)
-{
-	cpuCycle += i;
-}
-
-void Process::reduceCpuCycle()
-{
-	cpuCycle--;
-}
-
-void Process::setPid(int _pid)
-{
-	pid = _pid;
 }

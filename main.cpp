@@ -180,7 +180,7 @@ int main( int argc, const char* argv[] )
 			}
 			else //Produce Process
 			{
-				Process proc(feedSize, line_array[1], vmPage);
+				Process proc(feedSize, line_array[1]);
 				proc.pid = processId;
 				processId++;
 				runQueue.push_back(proc);
@@ -194,7 +194,7 @@ int main( int argc, const char* argv[] )
 			runningProcess =  runQueue.front();
 			runQueue.pop_front();
 			int emptyProcess=0;
-			while(runningProcess.getCpuCycle()==0)//if the picked process doesn't have remaining cpu cycle
+			while(runningProcess.cpuCycle==0)//if the picked process doesn't have remaining cpu cycle
 			{
 				runQueue.push_back(runningProcess);
 				emptyProcess++;
@@ -222,7 +222,7 @@ int main( int argc, const char* argv[] )
 				runQueue.pop_front();	
 			}			
 			running = true;
-			fprintf(fw, "%d\t%d\t%s\n", cycle, runningProcess.pid, runningProcess.getCodeName().c_str());
+			fprintf(fw, "%d\t%d\t%s\n", cycle, runningProcess.pid, runningProcess.codeName.c_str());
 		}
 
 		/////////////////Print system.txt
@@ -390,9 +390,9 @@ int main( int argc, const char* argv[] )
 
 			//what if currentLine == commandNum-1? 언제 터미네이트
 			//unable to keep running
-			if((runningProcess.getCpuCycle()==0 || timeLimit==timeQuantum)&& instruction[0]!=4 && instruction[0]!=5)
+			if((runningProcess.cpuCycle==0 || timeLimit==timeQuantum)&& instruction[0]!=4 && instruction[0]!=5)
 			{
-				cout<<"CANT KEEP RUNNING"<<runningProcess.getCodeName()<<endl;
+				cout<<"CANT KEEP RUNNING"<<runningProcess.codeName<<endl;
 			 	running = false;
 			 	timeLimit = 0;
 				runQueue.push_back(runningProcess);
