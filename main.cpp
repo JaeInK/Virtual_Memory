@@ -45,7 +45,7 @@ int main( int argc, const char* argv[] )
 	int feedLimit=0;
 
 	FILE *fp;
-	fp = fopen("input","r");
+	fp = fopen(argv[1],"r");
 	fscanf(fp, "%d\t%d\t%d\t%d\t%d\t%d\t%d\n", &EventNum, &timeQuantum, &vmSize, &pmSize, &pageSize, &feedFreq, &feedSize);
 	vmPage = vmSize/pageSize;
 	pmPage = pmSize/pageSize;
@@ -60,9 +60,12 @@ int main( int argc, const char* argv[] )
 		allocatedFrame.push_back(allo);
 	}
 
-	ifstream INfile("input");
+	//Reading input file and saving it as deque
+	ifstream INfile(argv[1]);
 	getline(INfile, line);
 	int processNumber = 0;
+	deque< deque<string> > INPUTdeque;
+	deque< deque<string> > PROCdeque;
 	for(int k=0; k<EventNum;k++)
 	{
 		getline(INfile, line);
@@ -75,11 +78,21 @@ int main( int argc, const char* argv[] )
 		}
 		if(line_array[1]!="INPUT")
 		{
+			deque<string> TMP;
+			TMP.push_back(line_array[0]);
+			TMP.push_back(line_array[1]);
+			PROCdeque.push_back(TMP);
 			processNumber++;
+		}
+		else
+		{
+			deque<string> TMP;
+			TMP.push_back(line_array[0]);
+			TMP.push_back(line_array[2]);
+			INPUTdeque.push_back(TMP);
 		}
 	}
 	vector<FILE *> files;
-
 	//making files array for pid.txt and Process' pageTable
 	for(int k=0; k<processNumber; k++)
 	{
@@ -102,27 +115,9 @@ int main( int argc, const char* argv[] )
 	FILE *fw = fopen("scheduler.txt", "w");
 	FILE *sy = fopen("system.txt", "w");
 	me = fopen("memory.txt", "w");
-	ifstream infile("input");
-	getline(infile, line);
-	line="";
 	
 	while(!terminate)
-	{
-		//line is empty means that inputs' instruction is processed so you need to read next instruction
-		if(line.empty())
-		{
-			getline(infile, line);
-			cout.flush();
-			//split line with blank using istringstream
-			istringstream iss(line);
-			string word;
-			for(int i=0;i<3;i++)
-			{
-				iss>>word;
-				line_array[i]=word;
-			}
-		}
-		
+	{	
 		//feed cpuCycle at feed Freuquency
 		if(feedLimit==feedFreq)
 		{
@@ -161,29 +156,27 @@ int main( int argc, const char* argv[] )
 	 	//check if this cycle is included in inputs' instruction
 		stringstream ss;
 		ss<<cycle;
-		if(line_array[0]==ss.str())
+		while(INPUTdeque.size()!=0 && INPUTdeque[0][0] == ss.str())
 		{
-			if(line_array[1]=="INPUT")//IO Call
+			for(int i=0; i<IOWaitList.size(); i++)
 			{
-				for(int i=0; i<IOWaitList.size(); i++)
+				stringstream pp;
+				pp<<IOWaitList[i].pid;
+				if(pp.str() == INPUTdeque[0][1])
 				{
-					stringstream pp;
-					pp<<IOWaitList[i].pid;
-					if(pp.str() == line_array[2])
-					{
-						runQueue.push_back(IOWaitList[i]);
-						IOWaitList.erase(IOWaitList.begin()+i);
-					}
+					runQueue.push_back(IOWaitList[i]);
+					IOWaitList.erase(IOWaitList.begin()+i);
 				}
 			}
-			else //create Process
-			{
-				Process proc(feedSize, line_array[1]);
-				proc.pid = processId;
-				processId++;
-				runQueue.push_back(proc);
-			}
-			line="";
+			INPUTdeque.erase(INPUTdeque.begin());
+		}
+		while(PROCdeque.size()!=0 && PROCdeque[0][0] == ss.str())
+		{
+			Process proc(feedSize, PROCdeque[0][1]);
+			proc.pid = processId;
+			processId++;
+			runQueue.push_back(proc);
+			PROCdeque.erase(PROCdeque.begin());
 		}
 
 	 	//get a process from run_queue if there is no running process
@@ -433,7 +426,7 @@ int main( int argc, const char* argv[] )
 		feedLimit++;
 
 		//Terminate when every lists are empty and there is no more instructions
-		if(!running && runQueue.size()==0 &&SleepList.size()==0 && IOWaitList.size()==0 && line.empty())
+		if(!running && runQueue.size()==0 &&SleepList.size()==0 && IOWaitList.size()==0 && INPUTdeque.size()==0 && PROCdeque.size()==0)
 		{
 			terminate=true;
 		}
@@ -551,7 +544,7 @@ void memoryAccess(int AllocationId, Process &RunningProcess)
 			break;
 		}
 	}
-	//if it doesn't, we should allocate memory again.
+	//if it doesn't,we allocate memory again.
 	if(!exist)
 	{
 		int Num=0;
