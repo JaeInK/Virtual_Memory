@@ -18,7 +18,7 @@ Process::Process(int _cpuCycle, string _codeName)
 
 	//make commandNum and commandArray
 	string line;
-	ifstream inFile(codeName);
+	ifstream inFile(codeName.c_str());
 	getline(inFile, line);
 	stringstream SS(line);
 	SS>>commandNum;
